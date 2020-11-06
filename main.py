@@ -2,10 +2,14 @@ from config import NODE_AMOUNT
 from node import Node
 import threading
 
+G = 5 # todo: figure out how to tune G according to NODE_AMOUNT
+
 message_queues = [[] for i in range(NODE_AMOUNT)]
-nodes = [Node() for i in range(NODE_AMOUNT)]
+nodes = [Node(i,G,NODE_AMOUNT,message_queues) for i in range(NODE_AMOUNT)]
 
+messages_delivered = []
 
+nodes[0].is_originator = True
 
 
 def handle_messages(node_number, node, message_queues):
