@@ -1,14 +1,23 @@
+from scipy.stats import poisson
 
-def get_random_sample(G,num_nodes):
+def get_random_sample(expected_sample_size,num_nodes,node_id):
     #todo: implement Omega from paper
-
-
+    sample_size = poisson(expected_sample_size)
+    while(sample_size<=0 or sample_size>=(num_nodes-1)): #can pick at most num_nodes-2 neighbors
+        sample_size = poisson(expected_sample_size)
+    sample = []
+    for x in range(sample_size):
+        randIndex = randint(num_nodes)
+        while(randIndex == node_id or randIndex in sample):
+            randIndex = randint(num_nodes)
+        sample.append(randIndex)
+    return sample
 
 class Node:
 
-    def __init__(self,node_id,G,num_nodes,message_queues):
+    def __init__(self,node_id,expected_sample_size,num_nodes,message_queues):
         self.node_id = node_id
-        self.G = get_random_sample(G,num_nodes)
+        self.G = get_random_sample(expected_sample_size,num_nodes, self.node_id)
         for g in self.G:
             self.send(g,"GOSSIP_SUBSCRIBE",message_queues)
         self.is_originator = False
