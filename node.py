@@ -1,6 +1,7 @@
 from scipy.stats import poisson
 
 from numpy import random
+import threading
 
 def get_random_sample(expected_sample_size,num_nodes,node_id):
     sample_size = random.poisson(expected_sample_size)
@@ -27,10 +28,10 @@ class Node:
         self.node_id = node_id
         self.G = set(get_random_sample(expected_sample_size,num_nodes, self.node_id))
         for g in self.G:
-            self.send(g,"GOSSIP_SUBSCRIBE","")
+            self.send(g,"GOSSIP_SUBSCRIBE","",message_queues)
         self.is_originator = False
         self.delivered = Message(-1,"PLACE_HOLDER","")
-        async self.message_lists = message_queues
+        self.event = threading.Event()
 
     def broadcast(self,type,message,node_message_lists):
         # only used by originator
@@ -40,15 +41,15 @@ class Node:
         for message_list in node_message_lists:
             message_list.append(Message(self.node_id,type,message))
 
-    def send(self,node,type,content):
-        self.message_lists[node].append(Message(self.node_id,type,content))
+    def send(self,node,type,content,node_message_lists):
+        node_message_lists[node].append(Message(self.node_id,type,content))
 
-    def dispatch(self,message):
+    def dispatch(self,message,node_message_lists):
         if self.delivered.type == "PLACE_HOLDER":
             self.delivered = message
 
             for node in self.G:
-                self.send(node,"GOSSIP",message.content)
+                self.send(node,"GOSSIP",message.content,node_message_lists)
 
     def receive(self,node_message_lists):
         if node_message_lists[self.node_id].empty():
@@ -64,7 +65,7 @@ class Node:
 
         elif message.type == "GOSSIP":
             if self.verify(message):
-                self.dispatch(message)
+                self.dispatch(message,node_message_lists)
             return True
 
         return False
