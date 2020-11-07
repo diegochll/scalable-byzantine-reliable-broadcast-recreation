@@ -18,7 +18,7 @@ def get_random_sample(expected_sample_size,num_nodes,node_id):
 
 class Message:
     def __init__(self,originator,message_type,content,signature = ""):
-        #todo: implement message signatures
+
         self.originator = originator
         self.type = message_type
         self.content = content

@@ -1,10 +1,11 @@
-from config import NODE_AMOUNT
+from config import NODE_AMOUNT, EXPECTED_SAMPLE_SIZE,CORRECT_MESSAGE
 from node import Node
 import threading
 
-EXPECTED_SAMPLE_SIZE = 5 # todo: figure out how to tune G according to NODE_AMOUNT
-
-CORRECT_MESSAGE = "CORRECT_MESSAGE"
+#todo: implement malicious node logic
+#todo: implement diameter calculations
+#todo: implement latency calculations
+#todo: implement message signatures + verification logic
 
 message_queues = [[] for i in range(NODE_AMOUNT)]
 message_queue_lock = threading.Lock()
