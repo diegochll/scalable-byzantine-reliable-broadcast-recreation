@@ -62,7 +62,7 @@ def handle_messages(node_number, node):
     debug("\tthis is my gossip set: {}".format(node.G))
     # the first node is the originator and needs to send out the message to decide upon
     if node_number == 0:
-        print("I am node 0 and the originator; broadcasting gossip with correct value...")
+        debug("I am node 0 and the originator; broadcasting gossip with correct value...")
         node.is_originator = True
         acquire_node_message_lock()
         node.pcb_broadcast("GOSSIP",CORRECT_MESSAGE,node_message_lists)
@@ -86,7 +86,7 @@ def handle_messages(node_number, node):
 
 
 def main():
-    print("starting simulation.")
+    debug("starting simulation.")
     global node_message_lists
     global nodes
 
@@ -99,8 +99,8 @@ def main():
     for worker in node_workers:
         worker.join()
 
-    print("finished simulation.")
-    print("counting number of nodes which delivered the correct message...")
+    debug("finished simulation.")
+    debug("counting number of nodes which delivered the correct message...")
     num_correct_delivery = 0
     num_messages_delivered = 0
     for node in nodes:

@@ -19,7 +19,7 @@ def get_random_sample(expected_sample_size,num_nodes,node_id):
         sample.append(randIndex)
     return sample
 
-def print_queue_status(sender_id, sent_message, recipient_id, recipient_queue, sending):
+def print_queue_status(sender_id, sent_message, recipient_id, recipient_queue, sending=True):
         stringified_messages = stringify_queue(recipient_queue) 
         action = "appending" if sending else "appended"
         debug("node {} {} {} to node {}'s message queue, {}".format(sender_id,str(sent_message),action, recipient_id, stringified_messages))
@@ -81,9 +81,9 @@ class Node:
 
     def send(self,recipient_node_id, message, node_message_lists):
         self.num_messages_sent += 1
-        print_queue_status(self.node_id, message, recipient_node_id, node_message_lists[recipient_node_id], True)
+        print_queue_status(self.node_id, message, recipient_node_id, node_message_lists[recipient_node_id], sending=True)
         node_message_lists[recipient_node_id].put(message)
-        print_queue_status(self.node_id, message, recipient_node_id, node_message_lists[recipient_node_id], False)
+        print_queue_status(self.node_id, message, recipient_node_id, node_message_lists[recipient_node_id], sending=False)
 
     def dispatch(self,message,node_message_lists):
         debug("this node's 'pb_delivered' message is {}; attempting to dispatch message {}...".format(str(self.pb_delivered),str(message)))
