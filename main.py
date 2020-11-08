@@ -1,5 +1,5 @@
-from config import NODE_AMOUNT, EXPECTED_SAMPLE_SIZE,CORRECT_MESSAGE, DEBUG
 from debug_utils import debug, stringify_queue
+from config import NODE_AMOUNT, EXPECTED_SAMPLE_SIZE, CORRECT_MESSAGE, ECHO_SAMPLE_SIZE, DELIVERY_THRESHOLD, DEBUG
 from node import Node
 import threading
 import queue
@@ -11,7 +11,7 @@ import queue
 
 node_message_lists = [queue.Queue() for i in range(NODE_AMOUNT)]
 node_message_lists_lock = threading.Lock()
-nodes = [Node(i,EXPECTED_SAMPLE_SIZE,NODE_AMOUNT,node_message_lists) for i in range(NODE_AMOUNT)]
+nodes = [Node(i,EXPECTED_SAMPLE_SIZE,NODE_AMOUNT,node_message_lists, ECHO_SAMPLE_SIZE,DELIVERY_THRESHOLD) for i in range(NODE_AMOUNT)]
 messages_delivered = []
 num_messages_delivered = 0
 old_num_messages_in_queues = 0
@@ -65,13 +65,12 @@ def handle_messages(node_number, node):
         print("I am node 0 and the originator; broadcasting gossip with correct value...")
         node.is_originator = True
         acquire_node_message_lock()
-        node.broadcast("GOSSIP",CORRECT_MESSAGE,node_message_lists)
+        node.pcb_broadcast("GOSSIP",CORRECT_MESSAGE,node_message_lists)
         release_node_message_lock()
 
     acquire_node_message_lock()
     while not wake_up_nodes():
         debug("there are messages left in the message queues; node {} is processing incoming messages...".format(node_number))
-        node_message_lists[node_number]
         debug("\tnode {}'s message list: {}".format(node_number,stringify_queue(node_message_lists[node_number])))
         if not node.receive(node_message_lists):
             debug("node {} could not receive a message. blocking until it is woken...".format(node_number))
@@ -105,7 +104,7 @@ def main():
     num_correct_delivery = 0
     num_messages_delivered = 0
     for node in nodes:
-        if node.delivered.type != "DEFAULT" and node.delivered.content == CORRECT_MESSAGE:
+        if node.pcb_delivered.type != "DEFAULT" and node.pcb_delivered.content == CORRECT_MESSAGE:
             num_correct_delivery += 1
             num_messages_delivered += node.num_messages_sent
     print("number of nodes which delivered the correct message: {}".format(num_correct_delivery))

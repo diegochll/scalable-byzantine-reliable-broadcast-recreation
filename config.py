@@ -1,10 +1,10 @@
-NODE_AMOUNT = 1000
+NODE_AMOUNT = 10
 EPSILON = 0
 EXPECTED_SAMPLE_SIZE = 10 # todo: figure out how to tune G according to NODE_AMOUNT (I think grows logarithmically with N??)
 CORRECT_MESSAGE = "CORRECT_MESSAGE"
 DEBUG = False
-
-
+ECHO_SAMPLE_SIZE = 5
+DELIVERY_THRESHOLD = 3
 
 #C = number of correct nodes
 #G = average gossip set size
