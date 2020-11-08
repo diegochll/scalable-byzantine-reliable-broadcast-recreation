@@ -1,8 +1,8 @@
-NODE_AMOUNT = 10
+NODE_AMOUNT = 1000
 EPSILON = 0
-EXPECTED_SAMPLE_SIZE = 5 # todo: figure out how to tune G according to NODE_AMOUNT (I think grows logarithmically with N??)
+EXPECTED_SAMPLE_SIZE = 10 # todo: figure out how to tune G according to NODE_AMOUNT (I think grows logarithmically with N??)
 CORRECT_MESSAGE = "CORRECT_MESSAGE"
-DEBUG = True
+DEBUG = False
 
 
 
