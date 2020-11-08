@@ -1,4 +1,4 @@
-from config import NODE_AMOUNT, EXPECTED_SAMPLE_SIZE,CORRECT_MESSAGE
+from config import NODE_AMOUNT, EXPECTED_SAMPLE_SIZE, CORRECT_MESSAGE, ECHO_SAMPLE_SIZE, DELIVERY_THRESHOLD
 from node import Node
 import threading
 
@@ -9,7 +9,7 @@ import threading
 
 message_queues = [[] for i in range(NODE_AMOUNT)]
 message_queue_lock = threading.Lock()
-nodes = [Node(i,EXPECTED_SAMPLE_SIZE,NODE_AMOUNT,message_queues) for i in range(NODE_AMOUNT)]
+nodes = [Node(i,EXPECTED_SAMPLE_SIZE,NODE_AMOUNT,message_queues,ECHO_SAMPLE_SIZE,DELIVERY_THRESHOLD) for i in range(NODE_AMOUNT)]
 
 messages_delivered = []
 
@@ -63,7 +63,7 @@ def handle_messages(node_number, node):
         print("I am node 0 and the originator; broadcasting gossip with correct value...")
         node.is_originator = True
         message_queue_lock.acquire(True)
-        node.broadcast("GOSSIP",CORRECT_MESSAGE,message_queues)
+        node.pcb_broadcast("GOSSIP",CORRECT_MESSAGE,message_queues)
         message_queue_lock.release()
 
     message_queue_lock.acquire(True)
@@ -104,7 +104,7 @@ def main():
     num_correct_delivery = 0
     num_messages_delivered = 0
     for node in nodes:
-        if node.delivered.type != "DEFAULT" and node.delivered.content == CORRECT_MESSAGE:
+        if node.pcb_delivered.type != "DEFAULT" and node.pcb_delivered.content == CORRECT_MESSAGE:
             num_correct_delivery += 1
             num_messages_delivered += node.num_messages_sent
     print("number of nodes which delivered the correct message: {}".format(num_correct_delivery))
