@@ -20,7 +20,7 @@ def get_random_sample(expected_sample_size,num_nodes,node_id):
 def print_queue_status(sender_id, sent_message, recipient_id, recipient_queue, sending):
         stringified_messages = stringify_queue(recipient_queue) 
         action = "appending" if sending else "appended"
-        debug("node {} {} {} to node {}'s 4 list, {}".format(sender_id,str(sent_message),action, recipient_id, stringified_messages))
+        debug("node {} {} {} to node {}'s message queue, {}".format(sender_id,str(sent_message),action, recipient_id, stringified_messages))
 
 class Message:
     def __init__(self,originator,message_type,content,signature = ""):
