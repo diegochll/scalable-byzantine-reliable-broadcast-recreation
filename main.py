@@ -1,23 +1,30 @@
-from config import NODE_AMOUNT, EXPECTED_SAMPLE_SIZE,CORRECT_MESSAGE
+from config import NODE_AMOUNT, EXPECTED_SAMPLE_SIZE,CORRECT_MESSAGE, DEBUG
+from debug_utils import debug, stringify_queue
 from node import Node
 import threading
+import queue
 
 #todo: implement malicious node logic
 #todo: implement diameter calculations
 #todo: implement latency calculations
 #todo: implement message signatures + verification logic
 
-message_queues = [[] for i in range(NODE_AMOUNT)]
-message_queue_lock = threading.Lock()
-nodes = [Node(i,EXPECTED_SAMPLE_SIZE,NODE_AMOUNT,message_queues) for i in range(NODE_AMOUNT)]
-
+node_message_lists = [queue.Queue() for i in range(NODE_AMOUNT)]
+node_message_lists_lock = threading.Lock()
+nodes = [Node(i,EXPECTED_SAMPLE_SIZE,NODE_AMOUNT,node_message_lists) for i in range(NODE_AMOUNT)]
 messages_delivered = []
-
 num_messages_delivered = 0
-
 old_num_messages_in_queues = 0
 
-debug = True
+
+
+def acquire_node_message_lock():
+    if DEBUG:
+       node_message_lists_lock.acquire(True)
+
+def release_node_message_lock():
+    if DEBUG:
+        node_message_lists_lock.release()
 
 """
 if a node's message queue is nonempty, sets that node's event bool to true - this is how nodes will be reawoken after blocking
@@ -25,19 +32,16 @@ if a node's message queue is nonempty, sets that node's event bool to true - thi
 """
 def wake_up_nodes():
     global debug
-    global message_queues
+    global node_message_lists
     global nodes
-    if debug:
-        print("waking up nodes...")
+    debug("waking up nodes...")
     to_ret = True
-    for i,queue in enumerate(message_queues):
-        if not len(queue) == 0:
-            if debug:
-                print("\twaking up node {}".format(i))
+    for i,queue in enumerate(node_message_lists):
+        if not queue.qsize() == 0:
+            debug( "\twaking up node {}".format(i))
             nodes[i].event.set()
             to_ret = False
-    if debug:
-        print("done waking up nodes. returning {}".format(to_ret))
+    debug("done waking up nodes. returning {}".format(to_ret))
     wake_all_nodes()
     return to_ret
 
@@ -53,41 +57,38 @@ while there are messages left in any queue, there is some possibility that a nod
 if a node is unable to process some message or has no more messages, it will block until its event is set
 """
 def handle_messages(node_number, node):
-    global message_queues
-    global message_queue_lock
-    print("I am node: " + str(node_number) + "; this is my message queue: " + str([str(message) for message in message_queues[node_number]]))
-    print("\tthis is my gossip set: {}".format(node.G))
-    global debug
+    global node_message_lists
+    #print("I am node: " + str(node_number) + "; this is my message queue: " + str([str(message) for message in node_message_lists[node_number]]))
+    debug("\tthis is my gossip set: {}".format(node.G))
     # the first node is the originator and needs to send out the message to decide upon
     if node_number == 0:
         print("I am node 0 and the originator; broadcasting gossip with correct value...")
         node.is_originator = True
-        message_queue_lock.acquire(True)
-        node.broadcast("GOSSIP",CORRECT_MESSAGE,message_queues)
-        message_queue_lock.release()
+        acquire_node_message_lock()
+        node.broadcast("GOSSIP",CORRECT_MESSAGE,node_message_lists)
+        release_node_message_lock()
 
-    message_queue_lock.acquire(True)
+    acquire_node_message_lock()
     while not wake_up_nodes():
-        if debug:
-            print("there are messages left in the message queues; node {} is processing incoming messages...".format(node_number))
-            print("\tnode {}'s message list: {}".format(node_number,str([str(message) for message in message_queues[node_number]])))
-        if not node.receive(message_queues):
-            if debug:
-                print("node {} could not receive a message. blocking until it is woken...".format(node_number))
+        debug("there are messages left in the message queues; node {} is processing incoming messages...".format(node_number))
+        node_message_lists[node_number]
+        debug("\tnode {}'s message list: {}".format(node_number,stringify_queue(node_message_lists[node_number])))
+        if not node.receive(node_message_lists):
+            debug("node {} could not receive a message. blocking until it is woken...".format(node_number))
             # there are no more messages for this node (or some sort of failure on receiving a message); we want to yield to the next node
-            message_queue_lock.release()
+            release_node_message_lock()
             node.event.clear()
             node.event.wait()
-            message_queue_lock.acquire(True)
-    print("message list is empty.")
-    message_queue_lock.release()
+            acquire_node_message_lock()
+    debug("message list is empty.")
+    release_node_message_lock()
     return
 
 
 
 def main():
     print("starting simulation.")
-    global message_queues
+    global node_message_lists
     global nodes
 
     node_workers = []
