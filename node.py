@@ -1,46 +1,18 @@
 from scipy.stats import poisson
 import logging
-from numpy import random
 import threading
 from config import DEBUG
-from debug_utils import debug, stringify_queue
+from debug_utils import debug, stringify_queue, print_queue_status
+from utils import Message, get_random_sample
 
 MODE = "MURMUR"
 
-def get_random_sample(expected_sample_size,num_nodes,node_id):
-    sample_size = random.poisson(expected_sample_size)
-    while(sample_size<=0 or sample_size>=(num_nodes-1)): #can pick at most num_nodes-2 neighbors
-        sample_size = random.poisson(expected_sample_size)
-    sample = []
-    for x in range(sample_size):
-        randIndex = random.randint(num_nodes)
-        while(randIndex == node_id or randIndex in sample):
-            randIndex = random.randint(num_nodes)
-        sample.append(randIndex)
-    return sample
-
-def print_queue_status(sender_id, sent_message, recipient_id, recipient_queue, sending=True):
-        stringified_messages = stringify_queue(recipient_queue) 
-        action = "appending" if sending else "appended"
-        debug("node {} {} {} to node {}'s message queue, {}".format(sender_id,str(sent_message),action, recipient_id, stringified_messages))
 
 def pcb_sample(size,num_nodes,node_id):
     to_ret = set()
     for i in range(size):
         to_ret.add(get_random_sample(1,num_nodes,node_id)[0])
     return to_ret
-
-
-class Message:
-    def __init__(self,originator,message_type,content, signature = ""):
-
-        self.originator = originator
-        self.type = message_type
-        self.content = content
-        self.signature = signature
-
-    def __str__(self):
-        return "Message(from: '{}'; type: '{}'; content: '{}'; signature: '{}')".format(self.originator,self.type, self.content,self.signature)
 
 
 class Node:
@@ -71,6 +43,11 @@ class Node:
     def pcb_broadcast(self,type,message,node_message_lists):
         self.pcb_delivered = Message(self.node_id,type,message,"")#last input should maybe be self.sign(message)
         self.pb_broadcast(type,message,node_message_lists)
+    
+    def prb_broadcast(self, type, message, node_message_lists):
+        self.pcb_broadcast(self, type, message, node_message_lists)
+
+    
 
     def pb_broadcast(self,type,message,node_message_lists):
         # only used by originator

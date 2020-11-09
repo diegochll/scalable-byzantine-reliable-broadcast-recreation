@@ -10,3 +10,8 @@ def stringify_queue(queue):
         stringified_queue = str([str(message) for message in list(queue.queue)]) 
         return stringified_queue
     return ""
+
+def print_queue_status(sender_id, sent_message, recipient_id, recipient_queue, sending=True):
+        stringified_messages = stringify_queue(recipient_queue) 
+        action = "appending" if sending else "appended"
+        debug("node {} {} {} to node {}'s message queue, {}".format(sender_id,str(sent_message),action, recipient_id, stringified_messages))
