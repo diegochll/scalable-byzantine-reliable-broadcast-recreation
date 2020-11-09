@@ -1,5 +1,4 @@
 from scipy.stats import poisson
-import logging
 import threading
 from config import DEBUG
 from debug_utils import debug, stringify_queue, print_queue_status
