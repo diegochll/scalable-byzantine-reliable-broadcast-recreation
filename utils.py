@@ -3,7 +3,6 @@ from numpy import random
 
 class Message:
     def __init__(self,originator,message_type,content, signature = ""):
-
         self.originator = originator
         self.type = message_type
         self.content = content
