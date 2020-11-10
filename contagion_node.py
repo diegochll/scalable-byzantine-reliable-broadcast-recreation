@@ -38,10 +38,10 @@ class ContagionNode:
         return node_sample
 
 
-
     def receive(self, node_message_lists):
         if node_message_lists[self.node_id].qsize() == 0: 
             return False
+
         message_transport = node_message_lists[self.node_id].get()
         message = message_transport.message
         message_originator = message_transport.originator
@@ -108,9 +108,9 @@ class ContagionNode:
             for recipient_node in self.ready_subscribed:
                 self.send(recipient_node, message_ready_transport, node_message_lists)
     
-    def send(self,recipient_node_id, message, node_message_lists):
+    def send(self,recipient_node_id, message_transport, node_message_lists):
         self.num_messages_sent += 1
         print_queue_status(self.node_id, message, recipient_node_id, node_message_lists[recipient_node_id], sending=True)
-        node_message_lists[recipient_node_id].put(message)
+        node_message_lists[recipient_node_id].put(message_transport)
         print_queue_status(self.node_id, message, recipient_node_id, node_message_lists[recipient_node_id], sending=False)
 
