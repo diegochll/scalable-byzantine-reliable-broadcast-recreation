@@ -1,10 +1,14 @@
 from numpy import random
 
 
-class Message:
-    def __init__(self,originator,message_type,content, signature = ""):
+class MessageTransport():
+    def __init__(self, originator, message_type, message):
         self.originator = originator
-        self.type = message_type
+        self.message = message
+        self.message_type = message_type 
+
+class Message:
+    def __init__(self, content, signature = ""):
         self.content = content
         self.signature = signature
 
