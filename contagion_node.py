@@ -1,7 +1,7 @@
 import threading
 from config import DEBUG
 from debug_utils import debug, stringify_queue, print_queue_status
-from message_types import READY_SUBSCRIBE, READY, SEND
+from message_types import READY_SUBSCRIBE, READY, SEND, ECHO_SUBSCRIBE
 from collections import defaultdict
 from utils import Message, MessageTransport
 
@@ -111,6 +111,8 @@ class ContagionNode:
     def send(self,recipient_node_id, message_transport, node_message_lists):
         self.num_messages_sent += 1
         print_queue_status(self.node_id, message, recipient_node_id, node_message_lists[recipient_node_id], sending=True)
+        
         node_message_lists[recipient_node_id].put(message_transport)
+        
         print_queue_status(self.node_id, message, recipient_node_id, node_message_lists[recipient_node_id], sending=False)
 
