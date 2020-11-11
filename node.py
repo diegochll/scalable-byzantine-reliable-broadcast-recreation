@@ -126,7 +126,7 @@ class Node:
         elif message_type == ECHO_SUBSCRIBE:
             if self.echo != None:
                 m = self.echo
-                self.send(message.originator,m,node_message_lists)
+                self.send(message.originator,m,node_message_lists) # update here
             self.echo_subscription_set.add(message.originator)
 
         elif message_type == READY_SUBSCRIBE:
