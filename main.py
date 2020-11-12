@@ -30,7 +30,7 @@ class Experiment:
         self.num_messages_delivered = 0
         self.time_taken = 0
         self.timed_out = False
-        self.timed_out_timer = threading.Timer(120,self.time_out)#2 minute time out
+        self.timed_out_timer = threading.Timer(node_amount,self.time_out)#2 minute time out
 
     #todo: implement malicious node logic
     #todo: implement diameter calculations
@@ -104,7 +104,7 @@ class Experiment:
                 node.event.clear()
                 node.event.wait()
                 self.acquire_node_message_lock()
-        debug_print("message list is empty.")
+        debug_print("message list is empty or timeout occurred.")
         self.release_node_message_lock()
         return
 
@@ -138,6 +138,11 @@ class Experiment:
         debug_print("total messages sent: {}".format(self.num_messages_sent))
         debug_print("total time taken for simulation: {}".format(self.time_taken))
 
+def ceil_sqrt(puts):
+    return math.ceil(math.sqrt(puts))
+
+def ceil_log(puts):
+    return math.ceil(math.log2(puts))
 
 if __name__ == "__main__":
     random.seed(int(time.time()))
@@ -145,17 +150,44 @@ if __name__ == "__main__":
     times = []
     messages = []
     num_nodes_correct = []
+    # sample_size_func = ceil_sqrt
+    sample_size_func = ceil_log
+
     for i,node_amount in enumerate(node_amounts):
-        e = Experiment(node_amount=node_amount,expected_sample_size=math.ceil(math.log2(node_amount)),correct_message="CORRECT_MESSAGE",echo_sample_size=math.ceil(math.log2(node_amount)),delivery_threshold=math.ceil(math.log2(math.log2(node_amount))),delivery_sample_size=math.ceil(math.log2(node_amount)),ready_sample_size=math.ceil(math.log2(node_amount)),contagion_threshold=math.ceil(math.log2(math.log2(node_amount))))
+        print("running experiment with {} nodes".format(node_amount))
+        e = Experiment(node_amount=node_amount,expected_sample_size=sample_size_func(node_amount),correct_message="CORRECT_MESSAGE",echo_sample_size=sample_size_func(node_amount),delivery_threshold=math.ceil(math.log2(math.log2(node_amount))),delivery_sample_size=sample_size_func(node_amount),ready_sample_size=sample_size_func(node_amount),contagion_threshold=math.ceil(math.log2(math.log2(node_amount))))
         e.run()
         times.append(e.time_taken)
         messages.append(e.num_messages_sent)
         num_nodes_correct.append(e.num_correct_delivery)
         if e.timed_out:
+<<<<<<< HEAD
             print("TIMED OUT. num nodes: {}; sample sizes: {}; thresholds: {} connected nodes: {}".format(node_amount,math.ceil(math.log2(node_amount)),math.ceil(math.log2(math.log2(node_amount)), e.check_connected())))
+=======
+            print("TIMED OUT. num nodes: {}; sample sizes: {}; thresholds: {}".format(node_amount,math.ceil(math.log2(node_amount)),math.ceil(math.log2(math.log2(node_amount)))))
+            times.append(-1)
+            messages.append(-1)
+            num_nodes_correct.append(-1)
+>>>>>>> 4a24c377aa5f21afb0675e99107aed016356840f
         else:
             print("ran experiment. num messages sent: {}, num nodes correct: {}, time taken to come to consensus: {}, connect nodes: {}".format(e.num_messages_sent,e.num_correct_delivery,e.time_taken, e.check_connected()))
 
-    fig,ax = plt.figure()
-    plt.title("times")
-    ax.plot(times,node_amounts)
+    file = open("experiment_out.csv")
+    file.write(",".join([str(time) for time in times]))
+    file.write("\n")
+    file.write(",".join([str(num_m for num_m in messages)]))
+    file.write("\n")
+    file.write(",".join([str(num_c) for num_c in num_nodes_correct]))
+    file.close()
+
+    plt.plot(node_amounts,times)
+    plt.title("time for consensus")
+    plt.ylabel("time (s)")
+    plt.xlabel("number of nodes")
+    plt.show()
+
+    plt.plot(node_amounts,messages)
+    plt.title("total number of messages sent")
+    plt.ylabel("num messages")
+    plt.xlabel("number of nodes")
+    plt.show()
