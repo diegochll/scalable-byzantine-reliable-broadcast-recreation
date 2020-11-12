@@ -25,8 +25,8 @@ class Node:
         self.num_messages_sent = 0
         self.is_originator = False
         self.event = threading.Event()
-        self.byzantine = random.uniform(0,1) < byzantine_ratio
-        print(self.byzantine)
+        self.crashed = random.uniform(0,1) < byzantine_ratio
+
     #********* pb_init(self,expected_sample_size,num_nodes,message_queues):
         self.G = set(get_random_sample(expected_sample_size, num_nodes, self.node_id))
         for g in self.G:
@@ -110,7 +110,7 @@ class Node:
         message_type = message_transport.message_type
 
         debug_print("node {} receiving message {}".format(self.node_id, str(message_transport)))
-        if not self.byzantine:
+        if not self.crashed:
             if message_type == GOSSIP_SUBSCRIBE:
                 debug_print("\t node {} receiving a gossip subscription from node {}. adding to gossip set...".format(self.node_id,message_originator))
                 if self.pb_delivered != None:
