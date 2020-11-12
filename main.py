@@ -9,14 +9,18 @@ import math
 import matplotlib.pyplot as plt
 from numpy import random
 import timer
-
+from collections import deque
 
 class Experiment:
     def __init__(self,node_amount, expected_sample_size, correct_message, echo_sample_size, delivery_threshold, delivery_sample_size, contagion_threshold, ready_sample_size):
         self.node_message_lists = [queue.Queue() for i in range(node_amount)]
         self.node_message_lists_lock = threading.Lock()
-        self.nodes = [Node(i, expected_sample_size, node_amount, self.node_message_lists, echo_sample_size, ready_sample_size,
-                      delivery_sample_size, delivery_threshold, contagion_threshold) for i in range(node_amount)]
+        self.nodes = []
+        self.id_map = {}
+        for i in range(node_amount):
+            node = Node(i, expected_sample_size, node_amount, self.node_message_lists, echo_sample_size, ready_sample_size, delivery_sample_size, delivery_threshold, contagion_threshold)
+            self.nodes.append(node)
+            self.id_map[i] = node
         self.messages_delivered = []
         self.num_messages_sent = 0
         self.old_num_messages_in_queues = 0
@@ -40,6 +44,19 @@ class Experiment:
     def release_node_message_lock(self):
         if DEBUG:
             self.node_message_lists_lock.release()
+
+    def check_connected(self):
+        q = deque()
+        visited = set()
+        q.appendleft(self.nodes[0].node_id)
+        while len(q) != 0:
+            node_id = q.pop()
+            visited.add(node_id)
+            node = self.id_map[node_id]
+            for neighbor_node in node.G:
+                if neighbor_node not in visited:
+                    q.appendleft(neighbor_node)
+        return len(visited)
 
     """
     if a node's message queue is nonempty, sets that node's event bool to true - this is how nodes will be reawoken after blocking
@@ -135,9 +152,9 @@ if __name__ == "__main__":
         messages.append(e.num_messages_sent)
         num_nodes_correct.append(e.num_correct_delivery)
         if e.timed_out:
-            print("TIMED OUT. num nodes: {}; sample sizes: {}; thresholds: {}".format(node_amount,math.ceil(math.log2(node_amount)),math.ceil(math.log2(math.log2(node_amount)))))
+            print("TIMED OUT. num nodes: {}; sample sizes: {}; thresholds: {} connected nodes: {}".format(node_amount,math.ceil(math.log2(node_amount)),math.ceil(math.log2(math.log2(node_amount)), e.check_connected())))
         else:
-            print("ran experiment. num messages sent: {}, num nodes correct: {}, time taken to come to consensus: {}".format(e.num_messages_sent,e.num_correct_delivery,e.time_taken))
+            print("ran experiment. num messages sent: {}, num nodes correct: {}, time taken to come to consensus: {}, connect nodes: {}".format(e.num_messages_sent,e.num_correct_delivery,e.time_taken, e.check_connected()))
 
     fig,ax = plt.figure()
     plt.title("times")
