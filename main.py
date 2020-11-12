@@ -1,6 +1,7 @@
 from debug_utils import debug, stringify_queue
-from config import NODE_AMOUNT, EXPECTED_SAMPLE_SIZE, CORRECT_MESSAGE, ECHO_SAMPLE_SIZE, DELIVERY_THRESHOLD, DEBUG
+from config import NODE_AMOUNT, EXPECTED_SAMPLE_SIZE, CORRECT_MESSAGE, ECHO_SAMPLE_SIZE, DELIVERY_THRESHOLD, DEBUG, DELIVERY_SAMPLE_SIZE,CONTAGION_THRESHOLD, READY_SAMPLE_SIZE
 from node import Node
+from utils import Message, MessageTransport
 import threading
 import queue
 
@@ -11,16 +12,16 @@ import queue
 
 node_message_lists = [queue.Queue() for i in range(NODE_AMOUNT)]
 node_message_lists_lock = threading.Lock()
-nodes = [Node(i,EXPECTED_SAMPLE_SIZE,NODE_AMOUNT,node_message_lists, ECHO_SAMPLE_SIZE,DELIVERY_THRESHOLD) for i in range(NODE_AMOUNT)]
+nodes = [Node(i,EXPECTED_SAMPLE_SIZE,NODE_AMOUNT,node_message_lists, ECHO_SAMPLE_SIZE, READY_SAMPLE_SIZE, DELIVERY_SAMPLE_SIZE, DELIVERY_THRESHOLD, CONTAGION_THRESHOLD) for i in range(NODE_AMOUNT)]
 messages_delivered = []
 num_messages_delivered = 0
 old_num_messages_in_queues = 0
 
 
-
 def acquire_node_message_lock():
     if DEBUG:
        node_message_lists_lock.acquire(True)
+
 
 def release_node_message_lock():
     if DEBUG:
@@ -65,7 +66,7 @@ def handle_messages(node_number, node):
         debug("I am node 0 and the originator; broadcasting gossip with correct value...")
         node.is_originator = True
         acquire_node_message_lock()
-        node.pcb_broadcast("GOSSIP",CORRECT_MESSAGE,node_message_lists)
+        node.prb_broadcast(CORRECT_MESSAGE,node_message_lists)
         release_node_message_lock()
 
     acquire_node_message_lock()
@@ -82,7 +83,6 @@ def handle_messages(node_number, node):
     debug("message list is empty.")
     release_node_message_lock()
     return
-
 
 
 def main():
@@ -104,9 +104,10 @@ def main():
     num_correct_delivery = 0
     num_messages_delivered = 0
     for node in nodes:
-        if node.pcb_delivered.type != "DEFAULT" and node.pcb_delivered.content == CORRECT_MESSAGE:
+        num_messages_delivered += node.num_messages_sent
+        debug("\tnode {} prb delivered message {}".format(node.node_id,node.prb_delivered_message))
+        if node.prb_delivered_message is not None and node.prb_delivered_message.content == CORRECT_MESSAGE:
             num_correct_delivery += 1
-            num_messages_delivered += node.num_messages_sent
     print("number of nodes which delivered the correct message: {}".format(num_correct_delivery))
     print("total messages sent: {}".format(num_messages_delivered))
 

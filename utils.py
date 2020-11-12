@@ -5,7 +5,11 @@ class MessageTransport():
     def __init__(self, originator, message_type, message):
         self.originator = originator
         self.message = message
-        self.message_type = message_type 
+        self.message_type = message_type
+
+    def __str__(self):
+        return "MessageTransport(from: '{}'; type: '{}'; message: '{}')".format(self.originator,self.message_type, str(self.message))
+
 
 class Message:
     def __init__(self, content, signature = ""):
@@ -13,8 +17,7 @@ class Message:
         self.signature = signature
 
     def __str__(self):
-        return "Message(from: '{}'; type: '{}'; content: '{}'; signature: '{}')".format(self.originator,self.type, self.content,self.signature)
-
+        return "Message(content: {}; signature: {})".format(self.content,self.signature)
 
 def get_random_sample(expected_sample_size,num_nodes,node_id):
     sample_size = random.poisson(expected_sample_size)
