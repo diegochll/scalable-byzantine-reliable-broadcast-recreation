@@ -12,13 +12,13 @@ import timer
 from collections import deque
 
 class Experiment:
-    def __init__(self,node_amount, expected_sample_size, correct_message, echo_sample_size, delivery_threshold, delivery_sample_size, contagion_threshold, ready_sample_size):
+    def __init__(self,node_amount, byzantine_ratio, expected_sample_size, correct_message, echo_sample_size, delivery_threshold, delivery_sample_size, contagion_threshold, ready_sample_size):
         self.node_message_lists = [queue.Queue() for i in range(node_amount)]
         self.node_message_lists_lock = threading.Lock()
         self.nodes = []
         self.id_map = {}
         for i in range(node_amount):
-            node = Node(i, expected_sample_size, node_amount, self.node_message_lists, echo_sample_size, ready_sample_size, delivery_sample_size, delivery_threshold, contagion_threshold)
+            node = Node(i, expected_sample_size, node_amount, self.node_message_lists, echo_sample_size, ready_sample_size, delivery_sample_size, delivery_threshold, contagion_threshold, byzantine_ratio)
             self.nodes.append(node)
             self.id_map[i] = node
         self.messages_delivered = []
@@ -116,7 +116,7 @@ class Experiment:
 
         node_workers = []
         for i in range(self.num_nodes):
-            node_worker = threading.Thread(target=self.handle_messages, args=(i, self.nodes[i]))
+            node_worker = threading.Thread(target=self.handle_messages, args=(i, self.nodes[i]), daemon=True)
             node_worker.start()
             node_workers.append(node_worker)
         self.timed_out_timer.start()
@@ -144,6 +144,9 @@ def ceil_sqrt(puts):
 def ceil_log(puts):
     return math.ceil(math.log2(puts))
 
+def ceil_div2(puts):
+    return math.ceil(puts/2)
+
 if __name__ == "__main__":
     random.seed(int(time.time()))
     node_amounts = [10,20,50,100,150,200,250,300,350,400,450,500,600,700,800,900,1000]
@@ -151,24 +154,23 @@ if __name__ == "__main__":
     messages = []
     num_nodes_correct = []
     # sample_size_func = ceil_sqrt
-    sample_size_func = ceil_log
+    # sample_size_func = ceil_log
+    sample_size_func = ceil_div2
+    byzantine_ratio = 0.1
 
     for i,node_amount in enumerate(node_amounts):
         print("running experiment with {} nodes".format(node_amount))
-        e = Experiment(node_amount=node_amount,expected_sample_size=sample_size_func(node_amount),correct_message="CORRECT_MESSAGE",echo_sample_size=sample_size_func(node_amount),delivery_threshold=math.ceil(math.log2(math.log2(node_amount))),delivery_sample_size=sample_size_func(node_amount),ready_sample_size=sample_size_func(node_amount),contagion_threshold=math.ceil(math.log2(math.log2(node_amount))))
+        e = Experiment(node_amount=node_amount, byzantine_ratio= byzantine_ratio, expected_sample_size=sample_size_func(node_amount),correct_message="CORRECT_MESSAGE",echo_sample_size=sample_size_func(node_amount),delivery_threshold=math.ceil(math.log2(math.log2(node_amount))),delivery_sample_size=sample_size_func(node_amount),ready_sample_size=sample_size_func(node_amount),contagion_threshold=math.ceil(math.log2(math.log2(node_amount))))
+        print(e.check_connected())
         e.run()
         times.append(e.time_taken)
         messages.append(e.num_messages_sent)
         num_nodes_correct.append(e.num_correct_delivery)
         if e.timed_out:
-<<<<<<< HEAD
-            print("TIMED OUT. num nodes: {}; sample sizes: {}; thresholds: {} connected nodes: {}".format(node_amount,math.ceil(math.log2(node_amount)),math.ceil(math.log2(math.log2(node_amount)), e.check_connected())))
-=======
             print("TIMED OUT. num nodes: {}; sample sizes: {}; thresholds: {}".format(node_amount,math.ceil(math.log2(node_amount)),math.ceil(math.log2(math.log2(node_amount)))))
             times.append(-1)
             messages.append(-1)
             num_nodes_correct.append(-1)
->>>>>>> 4a24c377aa5f21afb0675e99107aed016356840f
         else:
             print("ran experiment. num messages sent: {}, num nodes correct: {}, time taken to come to consensus: {}, connect nodes: {}".format(e.num_messages_sent,e.num_correct_delivery,e.time_taken, e.check_connected()))
 
