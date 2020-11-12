@@ -1,7 +1,7 @@
 from scipy.stats import poisson
 import threading
 from config import DEBUG
-from debug_utils import debug, stringify_queue, print_queue_status
+from debug_utils import debug_print, stringify_queue, print_queue_status
 from utils import Message, MessageTransport, get_random_sample
 from message_types import READY_SUBSCRIBE, READY, SEND, GOSSIP_SUBSCRIBE, ECHO_SUBSCRIBE, GOSSIP, ECHO
 
@@ -74,16 +74,16 @@ class Node:
     def pb_broadcast(self,message,node_message_lists):
         # only used by originator
         if self.is_originator:
-            debug("\toriginator in broadcast function; creating and broadcasting message with content {}. calling dispatch...".format(str(message)))
+            debug_print("\toriginator in broadcast function; creating and broadcasting message with content {}. calling dispatch...".format(str(message)))
             self.dispatch(message,node_message_lists)
 
     def dispatch(self, message, node_message_lists):
         #only originator calls dispatch
-        debug("this node's 'pb_delivered' message is {}; attempting to dispatch message {}...".format(str(self.pb_delivered),str(message)))
+        debug_print("this node's 'pb_delivered' message is {}; attempting to dispatch message {}...".format(str(self.pb_delivered),str(message)))
         if self.pb_delivered is None: # no message has been delivered yet
-            debug("\tnode {}'s delivered type is default, and outgoing message's type is not default...".format(self.node_id))
+            debug_print("\tnode {}'s delivered type is default, and outgoing message's type is not default...".format(self.node_id))
             self.pb_delivered = message
-            debug("\tsending message to nodes: {}".format(self.G))
+            debug_print("\tsending message to nodes: {}".format(self.G))
             for node in self.G:
                 self.send(node, MessageTransport(self.node_id, GOSSIP, message), node_message_lists)
             self.pb_deliver(message, node_message_lists)
@@ -108,10 +108,10 @@ class Node:
         message_originator = message_transport.originator
         message_type = message_transport.message_type
 
-        debug("node {} receiving message {}".format(self.node_id, str(message_transport)))
+        debug_print("node {} receiving message {}".format(self.node_id, str(message_transport)))
 
         if message_type == GOSSIP_SUBSCRIBE:
-            debug("\t node {} receiving a gossip subscription from node {}. adding to gossip set...".format(self.node_id,message_originator))
+            debug_print("\t node {} receiving a gossip subscription from node {}. adding to gossip set...".format(self.node_id,message_originator))
             if self.pb_delivered != None:
                 # self already delivered a value, so send it along to the node requesting a gossip subscription
                 message_transport = MessageTransport(self.node_id, GOSSIP, self.pb_delivered)
@@ -120,7 +120,7 @@ class Node:
             return True
 
         elif message_type == GOSSIP:
-            debug("\tnode {} receiving gossip from node {}; dispatching...".format(self.node_id,message_originator))
+            debug_print("\tnode {} receiving gossip from node {}; dispatching...".format(self.node_id,message_originator))
             if self.verify(message):
                 self.dispatch(message,node_message_lists)
             return True
@@ -228,7 +228,7 @@ class Node:
             self.send(recipient_node_id, message_ready_transport, node_message_lists)
     
     def pcb_deliver(self, message, node_message_lists):
-        debug("node {} calling pcb deliver on message {}".format(str(self.node_id),str(message)))
+        debug_print("node {} calling pcb deliver on message {}".format(str(self.node_id),str(message)))
         if self.verify(message):
             self.ready_messages.add(message)
             message_ready_transport = MessageTransport(self.node_id, READY, message)
@@ -239,9 +239,9 @@ class Node:
         return True
 
     def pb_deliver(self, message, node_message_lists):
-        debug("node {} calling pb_deliver...".format(self.node_id))
+        debug_print("node {} calling pb_deliver...".format(self.node_id))
         if self.verify(message):
             self.echo = message
-            debug("node {} sending echo message {}\n\tto echo subscription set {}".format(self.node_id,self.echo,str(self.echo_subscription_set)))
+            debug_print("node {} sending echo message {}\n\tto echo subscription set {}".format(self.node_id,self.echo,str(self.echo_subscription_set)))
             for e in self.echo_subscription_set:
                 self.send(e, MessageTransport(self.node_id, ECHO, message), node_message_lists)
