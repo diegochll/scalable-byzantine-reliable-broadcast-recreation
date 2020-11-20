@@ -3,12 +3,13 @@ import threading
 from config import DEBUG
 from debug_utils import debug_print, stringify_queue, print_queue_status
 from utils import Message, MessageTransport, get_random_sample
+import time
 from message_types import READY_SUBSCRIBE, READY, SEND, GOSSIP_SUBSCRIBE, ECHO_SUBSCRIBE, GOSSIP, ECHO
-
+import random
 
 def pcb_sample(size,num_nodes,node_id):
     to_ret = set()
-    for i in range(size):
+    for i in range(int(size)):
         to_ret.add(get_random_sample(1,num_nodes,node_id)[0])
     return to_ret
 
@@ -20,11 +21,21 @@ class Replies:
 
 
 class Node:
-    def __init__(self, node_id, expected_sample_size, num_nodes, node_message_lists, echo_sample_size, ready_sample_size, delivery_sample_size, delivery_threshold, contagion_threshold):
+    def __init__(self, node_id, expected_sample_size, num_nodes, node_message_lists, echo_sample_size, echo_threshold, ready_sample_size, delivery_sample_size, delivery_threshold, contagion_threshold, byzantine_ratio):
         self.node_id = node_id
+        self.time_start = time.perf_counter()
+        self.time_delivered = 0
+        self.latency = 0
         self.num_messages_sent = 0
         self.is_originator = False
         self.event = threading.Event()
+        #self.crashed = random.uniform(0,1) < byzantine_ratio
+        if self.node_id < int(byzantine_ratio * num_nodes)+1:
+            self.crashed = True
+        else:
+            self.crashed = False
+        if self.node_id == 0:
+            self.crashed = False
 
     #********* pb_init(self,expected_sample_size,num_nodes,message_queues):
         self.G = set(get_random_sample(expected_sample_size, num_nodes, self.node_id))
@@ -36,7 +47,7 @@ class Node:
     #********** pcb_init(self,echo_sample_size,delivery_threshold,num_nodes,message_queues):
         self.echo = None
         self.echo_sample = pcb_sample(echo_sample_size, num_nodes, self.node_id)
-        self.delivery_threshold = delivery_threshold
+        self.echo_threshold = echo_threshold
         self.pcb_delivered = None
         self.pcb_replies = {}
         for e in self.echo_sample:
@@ -103,66 +114,69 @@ class Node:
     def receive(self,node_message_lists):
         if node_message_lists[self.node_id].empty():
             return False
-        message_transport = node_message_lists[self.node_id].get()
+        message_transport = node_message_lists[self.node_id].get(timeout=10)
         message = message_transport.message
         message_originator = message_transport.originator
         message_type = message_transport.message_type
 
         debug_print("node {} receiving message {}".format(self.node_id, str(message_transport)))
+        if not self.crashed:
+            if message_type == GOSSIP_SUBSCRIBE:
+                debug_print("\t node {} receiving a gossip subscription from node {}. adding to gossip set...".format(self.node_id,message_originator))
+                if self.pb_delivered != None:
+                    # self already delivered a value, so send it along to the node requesting a gossip subscription
+                    message_transport = MessageTransport(self.node_id, GOSSIP, self.pb_delivered)
+                    self.send(message_originator, message_transport, node_message_lists)
+                self.G.add(message_originator)
+                return True
 
-        if message_type == GOSSIP_SUBSCRIBE:
-            debug_print("\t node {} receiving a gossip subscription from node {}. adding to gossip set...".format(self.node_id,message_originator))
-            if self.pb_delivered != None:
-                # self already delivered a value, so send it along to the node requesting a gossip subscription
-                message_transport = MessageTransport(self.node_id, GOSSIP, self.pb_delivered)
-                self.send(message_originator, message_transport, node_message_lists)
-            self.G.add(message_originator)
-            return True
+            elif message_type == GOSSIP:
+                debug_print("\tnode {} receiving gossip from node {}; dispatching...".format(self.node_id,message_originator))
+                if self.verify(message):
+                    self.dispatch(message,node_message_lists)
+                return True
 
-        elif message_type == GOSSIP:
-            debug_print("\tnode {} receiving gossip from node {}; dispatching...".format(self.node_id,message_originator))
-            if self.verify(message):
-                self.dispatch(message,node_message_lists)
-            return True
+            elif message_type == ECHO:
+                if message_originator in self.echo_sample and message_originator not in self.pcb_replies.keys() and self.verify(message):
+                    self.pcb_replies[message_originator] = message
+                    if len(self.pcb_replies.keys()) >= self.echo_threshold:
+                        self.pcb_delivered = message
+                        #trigger pcb.delivered
+                        self.pcb_deliver(message, node_message_lists)
+                return True
 
-        elif message_type == ECHO:
-            if message_originator in self.echo_sample and message_originator not in self.pcb_replies.keys() and self.verify(message):
-                self.pcb_replies[message_originator] = message
-                if len(self.pcb_replies.keys()) >= self.delivery_threshold:
-                    self.pcb_delivered = message
-                    #trigger pcb.delivered
-                    self.pcb_deliver(message, node_message_lists)
-            return True
+            elif message_type == ECHO_SUBSCRIBE:
+                if self.echo != None:
+                    m = self.echo
+                    self.send(message_originator,MessageTransport(self.node_id,ECHO,m),node_message_lists) # update here
+                self.echo_subscription_set.add(message_originator)
+                return True
 
-        elif message_type == ECHO_SUBSCRIBE:
-            if self.echo != None:
-                m = self.echo
-                self.send(message_originator,MessageTransport(self.node_id,ECHO,m),node_message_lists) # update here
-            self.echo_subscription_set.add(message_originator)
-            return True
+            elif message_type == READY_SUBSCRIBE:
+                for ready_message in self.ready_messages:
+                    message_to_send = MessageTransport(message_originator, READY, ready_message) 
+                    self.send(message_originator, message_to_send, node_message_lists)
+                self.ready_subscribed.add(message_originator)
+                return True
 
-        elif message_type == READY_SUBSCRIBE:
-            for ready_message in self.ready_messages:
-                message_to_send = MessageTransport(message_originator, READY, ready_message) 
-                self.send(message_originator, message_to_send, node_message_lists)
-            self.ready_subscribed.add(message_originator)
-            return True
+            elif message_type == READY:
+                if self.verify(message):
+                    #reply = message
+                    if message_originator in self.ready_group:
+                        if message_originator not in self.replies.ready:
+                            self.replies.ready[message_originator] = set()
+                        self.replies.ready[message_originator].add(message)
 
-        elif message_type == READY:
-            if self.verify(message):
-                #reply = message
-                if message_originator in self.ready_group:
-                    if message_originator not in self.replies.ready:
-                        self.replies.ready[message_originator] = set()
-                    self.replies.ready[message_originator].add(message)
+                    if message_originator in self.delivery_group:
+                        if message_originator not in self.replies.delivery:
+                            self.replies.delivery[message_originator] = set()
+                        self.replies.delivery[message_originator].add(message)
 
-                if message_originator in self.delivery_group:
-                    if message_originator not in self.replies.delivery:
-                        self.replies.delivery[message_originator] = set()
-                    self.replies.delivery[message_originator].add(message)
-
-            self.check_message_ready(node_message_lists)
-            self.check_message_delivered()
+                self.check_message_ready(node_message_lists)
+                self.check_message_delivered()
+                return True
+        else:
+            # clear queue
             return True
 
         return False
@@ -181,8 +195,10 @@ class Node:
         for message, node_set in messages_delivered.items():
             if len(node_set) >= self.delivery_threshold and not self.delivered:
                 self.delivered = True
-                # trigger, prb_deliver
+                # trigger: prb_deliver
                 self.prb_delivered_message = message
+                self.time_delivered = time.perf_counter()
+                self.latency = self.time_delivered - self.time_start
                 break
 
         #
